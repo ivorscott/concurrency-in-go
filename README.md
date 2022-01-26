@@ -225,6 +225,32 @@ all the threads in a process will share the heap.
 
 ![](docs/images/diagram-threads.webp)
 
+One of the operating system's jobs is to select a program from a ready queue from processing. Afterwards, the program starts 
+executing and at some later point in time, there might be an interrupt, where the program is interrupted, for example,
+a process is waiting for data from a hard drive. When this happens the operating system take over and starts executing,
+it swaps out the interrupted job and added a new one from the ready queue. The swapping of jobs is called a context switch.
+Context switching is expensive due to the time spent updating variables and memory space. So if you increase the number 
+of threads your doing more context switching and spending less time doing useful execution.
+
+## Green Threads
+
+Green threads are user level threads. A normal thread runs at the operating system (kernel) level. A green thread is a
+user level thread and it's not the operating system that decides which green thread is to be executed, that's the program's 
+responsibility. A green thread would run inside a kernel level thread. Typically you have many green threads running in 
+one normal kernel level thread. Green thread are a huge improvement because there kernel does not need to be involved 
+system to do context switching, instead its the program that decides what to execute. Green thread don't spend a lot of 
+time doing context switching.
+
+The disadvantage with green threads is that the operating system doesn't know anything about them. For example, when 
+a green thread needs to read from a drive it needs to wait for data to arrive back. The operating system realizes that a 
+thread is waiting for IO and it removes the whole thread from execution even though other green threads might require 
+cpu work, however, they're not all waiting for data.  
+
+Go uses a mixture of kernel level threads and green threads. It has a hybrid system. It creates a kernel level thread for
+each cpu that you have and each thread contains a number of green threads. So in Go, whenever a green thread tries to do
+a synchronous (blocking) operation, the green thread is moved away from the execution and go reshuffles the other green
+threads that are not dependent on the IO operation and keeps them running on cpu.
+
 [5]
 
 Threads are sometimes called lightweight processes because they have their own stack but can access shared data. 
@@ -234,13 +260,17 @@ a process will certainly affect other threads and the viability of the process i
 
 ### Pros and Cons of Processes and Threads
 
-| Process  |  Thread  |
-|----------------------------|----------------------------
-| Processes are heavyweight operations. | Threads are lighter weight operations.   |
-| Each process has its own memory space. | Threads use the memory of the process they belong to.   |
+| Process                                                                           |  Thread  |
+|-----------------------------------------------------------------------------------|----------------------------
+| Processes are heavyweight operations.                                             | Threads are lighter weight operations.   |
+| Each process has its own memory space.                                            | Threads use the memory of the process they belong to.   |
 | Inter-process communication is slow as processes have different memory addresses. | Inter-thread communication can be faster than inter-process communication because threads of the same process share memory with the process they belong to.   |
-| Context switching between processes is more expensive. | Context switching between threads of the same process is less expensive.   |
-| Processes don’t share memory with other processes. | Threads share memory with other threads of the same process.   |
+| Context switching between processes is more expensive.                            | Context switching between threads of the same process is less expensive.   |
+| Processes don’t share memory with other processes.                                | Threads share memory with other threads of the same process.   |
+
+Go doesn't have strong support for processes like in C but there is some functions to support this.
+For example, there is no fork function in Go to spawn a new process programmatically. However, Go does have strong support for threads.
+
 
 ## Concurrency is not Parallelism
 
@@ -252,7 +282,7 @@ In other words, concurrency is dealing with lots of things at once; out of order
 Parallelism is about doing a lot of things at once; simultaneously. 
 
 What is good structure? Good structure is composing a program into logical independent or concurrent tasks. Then, to
-do a better job we can leverage parallelism or not. Parallelism it this way behaves like a free variable we can choose 
+do a better job we can leverage parallelism or not. Parallelism this way behaves like a free variable we can choose 
 to apply later, or not, to improve performance. In terms of program correctness, concurrency is correct even without 
 parallelism. You can have concurrency without parallelism and parallelism without concurrency (e.g., in bit-level parallelism). [11]
 
@@ -279,6 +309,13 @@ Performance gains are directly dependent on how much a program must be written s
 
 [Video explanation of Amdahl's Law](https://www.youtube.com/watch?v=WdRiZEwBhsM)
 
+### Gustafson's Law
+
+Gustafson Law supports Amdahl's Law and suggests as long you increase the problem size and the number of processors it 
+doesn't really matter how much of your software is linear and how much of it is parallel because the relation is always 
+linear. The speed up may be slower if you have a less parallelizable algorithm, however, it is still linear as long as 
+you keep increasing you problem size. 
+
 Embarrassingly parallel is a technical term for a problem that can be divided into parallel tasks. 
 Embarrassingly parallel programs scale horizontally, which means we can optimize overall performance by adding more CPUs
 or machine instances for our program. The execution of parallel tasks runs faster, and what's left is to
@@ -294,6 +331,7 @@ the illusion of parallel execution. The time given to each task is called a "tim
 between tasks happens so fast it is usually not perceptible. Parallelism is genuine simultaneous execution and
 concurrency is interleaving of processes in time to give the appearance of simultaneous execution.
 
+Concurrency is not just about speeding things up, sometimes its just convenient to program in a multi threaded matter.
 Concurrency is a way to structure things to maybe use Parallelism to improve execution. 
 
 Chunks of a program may appear to be running in parallel but really they're executing in a sequential manner.
@@ -315,15 +353,15 @@ any given time. Parallelism requires independent concurrent tasks (concurrency) 
 
 The following table highlights the differences between concurrency and parallelism.
 
-| Concurrency  | Parallelism   |
-|---|---|
-| Concurrency is out of order execution | Parallelism is parallel execution |
+| Concurrency  | Parallelism                                                  |
+|---|--------------------------------------------------------------|
+| Concurrency is out of order execution | Parallelism is parallel execution                            |
 | Concurrency is the composition of independently executing things | Parallelism is the simultaneous execution of multiple things. |
-| Concurrency is dealing with lots of things at once.  | Parallelism is about doing a lot of things at once |
-| Concurrency is a property of the code. | Parallelism is a property of running the program. |
-| Concurrency is about structure | Parallelism is about execution |
-| Concurrency enables Parallelism | Parallelism enhances Concurrency |
-| Concurrency's goal is good structure | Parallelism is not the goal of Concurrency
+| Concurrency is dealing with lots of things at once.  | Parallelism is about doing a lot of things at once           |
+| Concurrency is a property of the code. | Parallelism is a property of running the program.            |
+| Concurrency is about structure | Parallelism is about execution                               |
+| Concurrency enables Parallelism | Parallelism enhances Concurrency                             |
+| Concurrency's goal is good structure | Parallelism is not the goal of Concurrency                   
 
 [Rob Pike talk on "Concurrency is not Parallelism"](https://www.youtube.com/watch?v=oV9rvDllKEg)
 
