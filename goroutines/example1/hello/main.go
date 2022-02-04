@@ -1,5 +1,5 @@
 /*
-This example shows interleaved execution.
+This example shows interleaved out of order execution.
 This occurs because the goroutines are running concurrently.
 
 Output:
@@ -50,4 +50,3 @@ func main() {
 
 	fmt.Println("done...")
 }
-

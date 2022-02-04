@@ -1,6 +1,8 @@
 # Concurrency in Go
 
 Table of contents
+ - [What is Concurrency?](#what-is-concurrency)
+ - [Concurrency in Go](#concurrency-in-go)
  - [Why Concurrency is Hard](#why-concurrency-is-hard)
  - [How Processes Work](#how-processes-work)
  - [How Threads Work](#how-threads-work)
@@ -15,10 +17,33 @@ Table of contents
     - [Processes, Threads, and the Operating System](#processes-threads-and-the-operating-system)
     - [Thread States](#thread-states)
     - [Thread Limits](#thread-limits)
-  - [Concurrency in Go](#concurrency-in-go)
+  - [Concurrency in Go Deep Dive](#concurrency-in-go-deep-dive)
   - [The Go Scheduler](#the-go-scheduler)
-  - [Channel Mechanics](#channel-mechanics)  
-  - [Examples](#examples)
+  - [Channel Mechanics](#channel-mechanics) 
+ - [Examples](#examples)
+
+
+## What is Concurrency?
+
+Concurrency is out of order execution. No asumptions can be made about the order of this execution. Concurrent code is designed to run on multicore processors. Concurrent code is nonsequential. A linear sequence of individual steps cannot exist if an algorithm contains parts executed by different processors overlapping in time. 
+
+The out of order nature of concurrent code demands determinacy (exactness). To limit the arbitrariness of out of order exection, we can do two things: 
+  1. Analyze all possible effects of the interaction between individual steps.
+  2. Control competing access to resources through synchronization tools to restrict the possible execution sequences.
+
+Any effort to verify correctness of a concurrent algorithm by testing, is a questionable malpractice. There's a tremendous amount of variability in concurrent code. Developers run into problems when they think about concurrent problems sequentially. Instead, developers must meticulously iterate through possible scenarios. Even if tests pass many times, you can't conclude that it is error free.
+
+## Concurrency in Go
+
+The `go` keword allows us to run functions concurrently. This keyword creates a lightweight process or thread called a *goroutine*. 
+
+ - [goroutines/example1](goroutines/example1/hello/main.go)
+
+
+Processes with access to shared resources may run concurrently.
+
+[TODO] Summarize concurrency in Go at a high level
+
 
 ## Why Concurrency is Hard
 
@@ -665,7 +690,7 @@ CPU time for other tasks. Some operating systems require a context switch to mov
 > context switch depends on the architectures, operating systems, and the number of resources shared (threads that
 > belong to the same process share many resources whether compared to unrelated non-cooperating processes. [3]
 
-## Concurrency in Go
+## Concurrency in Go Deep Dive
 
 Go overcomes some limitations with threads. Concurrency in Go is based on the paper written by Tony Hoare,
 "Communicating Sequential Processes" or CSP. CSP inspired the use of channels.
@@ -1025,22 +1050,27 @@ and notifies that goroutine. It is allowed but not required for the caller to ho
 Broadcast wakes up all the goroutines that were waiting on the condition and is allowed but it is not required for the caller
 to hold the lock during this call.
 
-  
 
 ## Examples
 
+### Goroutines
+ - [goroutines/example1/hello](goroutines/example1/hello/main.go)
+ - [goroutines/example2/server](goroutines/example2/server/main.go)
+
 ### Channel Examples
-1. [channels/example1/hello](channels/example1/hello/main.go)
-2. [channels/example2/server](channels/example2/server/main.go)
-3. [channels/example3/channel](channels/example3/channel/main.go)
-4. [channels/example4/channelrange](channels/example4/channelrange/main.go)
-5. [channels/example5/bufferedchannel](channels/example5/bufferedchannel/main.go)
-6. [channels/example6/channeldirection](channels/example6/channeldirection/main.go)
-6. [channels/example7/channelownership](channels/example7/channelownership/main.go)
+
+- [channels/example1/channel](channels/example1/channel/main.go)
+- [channels/example2/channelrange](channels/example2/channelrange/main.go)
+- [channels/example3/bufferedchannel](channels/example3/bufferedchannel/main.go)
+- [channels/example4/channeldirection](channels/example4/channeldirection/main.go)
+- [channels/example5/channelownership](channels/example5/channelownership/main.go)
 
 ### Select Examples
-1. [select/example1](select/example1/main.go)
-2. [select/example2](select/example2/main.go)
+- [select/example1](select/example1/main.go)
+- [select/example2](select/example2/main.go)
+
+### Special Example
+- [boids simulation](boids/main.go)
 
 ### More Examples
 
@@ -1073,3 +1103,5 @@ Resources
 [11] [https://en.wikipedia.org/wiki/Parallel_computing](https://en.wikipedia.org/wiki/Parallel_computing)
 
 [12] [https://en.wikipedia.org/wiki/File_descriptor](https://en.wikipedia.org/wiki/File_descriptor)
+
+[13] Nonsequential and Distributed Programming with Go, Christian Mauer, Springer
