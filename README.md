@@ -17,9 +17,10 @@ Table of contents
     - [Processes, Threads, and the Operating System](#processes-threads-and-the-operating-system)
     - [Thread States](#thread-states)
     - [Thread Limits](#thread-limits)
-  - [Concurrency in Go Deep Dive](#concurrency-in-go-deep-dive)
-  - [The Go Scheduler](#the-go-scheduler)
-  - [Channel Mechanics](#channel-mechanics) 
+ - [Concurrency in Go Deep Dive](#concurrency-in-go-deep-dive)
+ - [The Go Scheduler](#the-go-scheduler)
+ - [Channel Mechanics](#channel-mechanics) 
+ - [Goroutine Leaks](/#goroutine-leaks)
  - [Examples](#examples)
 
 
@@ -86,118 +87,6 @@ Thread 1 locks resource A and then Thread 2 locks resource B. When Thread 1 atte
 because the resource hasn't been unlocked which places the operation in the waiting queue. Similarly, when Thread 2 
 attempts to lock resource B it can't, so the operation is also placed in a waiting state. This creates a circular 
 wait scenario or Deadlock. In a deadlock no progress is made, the program will never recover without outside intervention.
-
-## How the Kernel Works
-
-The term operating system is commonly used with two different meanings:
-
--  to denote the entire package consisting of the central software managing a computer's resources and, all the
-   accompanying standard software tools, such as commandline interpreters, graphical user interfaces, file utilities, and
-   editors.
-- More narrowly, to refer to the central software that manages and allocates computer resources (i.e., the CPU, RAM,
-  and devices).
-
-The term kernel is often used as a synonym for the second meaning. Although it is possible to run programs on a computer
-without a kernel, the presence of a kernel greatly simplifies the writing and use of other programs, and increases the power and flexibility
-available to programmers. The kernel does this by providing a software layer to manage the limited resources of a computer.
-
-### Tasks Performed by the Kernel
-
-- __Process scheduling:__
-  - A computer has one or more central processing units (CPUs), which execute the instructions of 
-programs. Unix-based systems are preemptive multitasking operating systems. Multitasking means that multiple processes
-  (i.e., running programs) can simultaneously reside in memory and each may receive use of CPU(s). Preemptive means that the 
-  rules governing which processes receive use of the CPU and for how long are determined by the kernel process scheduler
-  (rather than by the processes themselves).
-
-- __Memory management:__ 
-  - Physical memory (RAM) remains a limited resource that the kernel must share among processes in an 
-equitable and efficient fashion. Virtual memory management is a technique that has to main advantages:
-  
-   - Processes are isolated from one another and from the kernel , that one process can't read or modify the memory of
-   another process or the kernel.
-   - Only part of a process needs to be kept in memory, thereby lowering the memory requirements of each process and
-   allowing more processes to be held in RAM simultaneously. This leads to better CPU utilization, since it increase the 
-     likihood that, at any moment in time, there is at least one process that the CPU(s) can execute.
-
-- __Provision of a file system:__ 
-  - The kernel provides a file system on disk, allowing files to be created, retrieved, updated,
-deleted, and so on.
-
-- __Creation and termination of processes:__ 
-  - The kernel can load a new program into memory, providing it with the resources
-  (e.g., CPU, memory, and access to files) that it needs in order to run. Such an instance of a running program is called
-  a process. Once a process has completed execution, the kernel ensures that the resources it uses are freed for subsequent
-  reuse by later programs.
-
-- __Access to devices:__ 
-  - The devices (mice, monitors, keyboards, disk and tap drivers, and so on) attached to a computer allow
-communication of information between the computer and the outside world, permitting input, output, or both. The kernel
-  provides programs with an interface that standardizes and simplifies access to devices, while at the same time regulating
-  access by multiple processes to each device.
-
-- __Networking:__ 
-  - The kernel transmits and retrieves network messages (packets) on behalf or uer processes. This task includes
-routing of network packets to the target system.
-  
-- __Provision of a system call application programming interface (API):__ 
-  - Processes can request the kernel to perform various
-tasks using kernel entry points known as system calls.
-
-### Kernel mode and user mode
-
-Modern processor architectures typically allow the CPU to operate in at least two different modes: user mode and kernel
-mode (sometimes also referred to as supervisor mode). Hardware instructions allow switchin from one mode to the other. 
-Corresponding, areas of virtual memory can be marked as being part of user space of kernel space. When running in user mode,
-the CPU can access only memory that is marked as being in user space; attempts to  access memory in kernel space result in
-hardware exception. When running in kernel mode, the CPU can access both user and kernel memory space.
-
-Certain operations can be performed only while the processor is operating in kernel mode. Examples include executing the
-halt instruction to stop the system, accessing the memory management hardware, and initiating device I/O operations.
-By taking advantage of this hardware design to place the operating system in kernel space, operating system implementers
-can ensure that user processes are not able to access the instructions and data structures of the kernel, or to perform
-operations that would adversely affect the operation of the system.
-
-### Process versus kernel view of the system
-
-A running system typically has numerous processes. For a process, many things happen asynchronously. An executing process
-doesn't know when it will next time out, which other processes will then be scheduled for the CPU (and in what order),
-or when it will next be scheduled. The delivery of signals and the occurrence of interprocess communication events are 
-mediated by the kernel, and can occur at any time for a process. Many things happen transparently for a process. A process
-doesn't know where it is located in RAM or, in general, whether a particular part of its memory space is currently resident
-in memory or held in the swap area (a reserved area of disk space used to supplement the computer's RAM). Similarly, a 
-process doesn't know where on the disk drive the files it accesses are being held; it simply refers to the files by name.
-A process operates in isolation; it can't directly communicate with another process. A process can't create a 
-new process itself, or even end its own existence. Finally, a process can't communicate directly with the input and output 
-devices attached to the computer.
-
-By contrast, a running system has one kernel that knows and controls everything. The kernel facilitates the running of
-all processes on the system. The kernel decides which process will obtain access to the CPU, when it will do so, and for
-how long. The kernel maintains data structures containing information about all running processes 
-and updates these structures as processes are created, change state, and terminate. The kernel maintains all of the 
-low-level data structures that enable filenames used by programs to be translated into physical locations on the disk.
-The kernel also maintains data structures that map the virtual memory of each process into the physical memory of the 
-computer and the swap area(s) on disk. All communication between processes is done via mechanisms provided by the kernel.
-In response to requests from processes, the kernel creates new processes and terminates existing processes. Lastly, the 
-kernel (in particular, device drivers) perform all direct communication with input and output devices, transferring 
-information to and from user processes as required.
-
-### Syscalls
-
-A system call is a controlled entry point into the kernel, allowing a process to request that the kernel perform some 
-action on the process's behalf. The kernel makes a range of services accessible to programs via the system call application
-programming interface (API). The services include for example, creating new process, performing I/O, and creating a pipe for 
-interprocess communication.
-
-A system call changes the processor state from user mode to kernel mode, so that the CPU can access protected kernel memory.
-
-The set of system calls is fixed. Each system call is identified by a unique number. (This numbering scheme is not normally
-visible to programs, which identify system calls by name.)
-
-Each system call may have a set of arguments that specify information to be transferred from user space (i.e., the process's
-virtual address space) to kernel space and vice versa.
-
-[8]
 
 ## How Processes Work
 
@@ -898,8 +787,115 @@ point to, are moved. For example, off-the-shelf C and C++ compilers do not give 
 - Go scheduler moves the blocked goroutines, out of OS thread
 - Once channel operation is complete, goroutine is moved back to local run queue
 
+### Basics
 
-### Structure
+Channels help facilitate communication between goroutines. Goroutines can be synchronized via channels. Channels are 
+typed and thread safe.  
+
+Let `T` stand for a given type we want associated with a channel. To delcare a channel we do:
+
+```go
+var ch chan T
+ch = make(chan T)
+
+// or 
+
+ch := make(chan T)
+```
+
+The pointer operator `<-` is used to send and receive the value from the channel. The arrow indicates the direction
+of the data flow. 
+
+#### SYNTAX
+| SEND                                 | RECEIVE                           |
+|--------------------------------------|-----------------------------------|
+| `ch <-v`                             | `v := <-ch`                       |
+| value is sent to channel | value is received from channel |
+
+Go recommends to use channels primarily when sharing memory access between goroutines, over traditional synchonization tools
+like _mutex locks_. 
+
+### Rule of thumb
+> "Do not communicate by sharing memory; instead, share memory by communicating"
+
+### Channels Block
+
+1. The _sending goroutine_ is going to block until there is a coresponding receiver goroutine ready to receive the value.
+    ```go
+   go func() {
+     ch <- v // wait until a receiver is ready to receive a value.
+     fmt.Println("Println won't execute until there is a receiving goroutine.")
+   }()
+   ```
+2. The _receiving goroutine_ is going to block until there is a corresponding sender goroutine sending a value.
+   ```go
+   func() main {
+     ch := make(chan int)
+     // ...
+     <- ch // wait until a sender is sending a value. 
+     fmt.Println("Println won't execute until there is a sender goroutine.")
+   }
+   ```
+It is the responsibility of the channel to make the goroutine runnable again once the channel has data.
+
+### Issues with Channels
+
+The channels default value is `nil`. It is important to use `make()` to allocate memory for the channel. Various 
+errors can occur when improperly using channels. 
+1. Deadlocks occur when writing to a `nil` channel.
+2. Panics occur when:
+   - closing a nil channel
+   - writing to a closed channel
+   - closing a channel more than once.
+
+To avoid these issues it is recommended to designate channel owners. 
+
+The  goroutine that instantiates writes and closes  a channel is the owner of the channel. Furthermore, channel utilizers
+should have read-only access to the channel. With these practices you can help avoid panics and deadlocks.
+
+### Two Types of Channels
+
+There are two types of channels: 
+
+1. Buffered Channels
+2. Unbuffered Channels 
+
+Buffered channels are channels with a buffer between the sender and the receiver goroutine. Channels are given a capacity
+ or buffer size that represents the amount of the elements that can be sent without the receiver being ready to receive 
+the values. Basically, the sender can keep sending values without blocking until the buffer gets filled. When the buffer 
+get filled the sender will block. The receiver can keep receiving values without blocking until the buffer gets empty. 
+
+Unbuffered channels don't have a buffer between sender and receiver goroutines. This makes the relationship between goroutines
+synchronous. Because there is no buffer, the sender goroutine will block until there is a receiver to receive a value. 
+The receiving goroutine will block until there is a sender sending a value.
+
+### Receiving Values From Channels
+
+The receive channel returns two values. 
+1. The received value from the channel.
+2. A second boolean value which indicates whether the value that is being read from the channel is a value that is generated
+by a _write_ or a default value being generated by a _close_ of the channel.
+
+```go
+value, ok := <-ch
+// ok = true (write)
+// ok = false (close)
+```
+
+You can also range over channels. This allows you to iterate over values received from a  channel. The loop automatically
+breaks when a channel is closed. 
+
+
+> ```go
+> for value := range ch {
+>   //.. 
+> }
+>``` 
+> __Note!__ Ranging over values does gnot return a second value.
+
+
+
+### Structure 
 
 We use the built-in function make to create channels. 
 
@@ -932,8 +928,6 @@ In a send and receive scenario between 2 goroutines:
 - There is no memory sharing between goroutines
 - Goroutines copy elements into and from hchah
 - hchan is protected by mutex lock
-
-> "Do not communicate by sharing memory; instead, share memory by communicating"
 
 ### Buffer is Full
 - When channel buffer is full and a goroutine tries to send a value
@@ -1050,6 +1044,19 @@ and notifies that goroutine. It is allowed but not required for the caller to ho
 Broadcast wakes up all the goroutines that were waiting on the condition and is allowed but it is not required for the caller
 to hold the lock during this call.
 
+## Goroutine Leaks
+
+A common type of memory leak in go is a goroutine leak. If  you start a goroutine that you expect to eventually terminate,
+but it never does, it has leaked. This means it lives for the life time of the application and any memory allocated for the goroutine can't be released.
+
+### Rule of thumb
+> Never stop a goroutine without knowing when it will end.
+
+In other words, everytime you write the `go` statement in a program you should consider how and under what conditions, 
+the goroutine will end.
+
+Sometimes goroutines may run until the program exits but they are not an exception to this rule. Goroutines, while efficient,
+have a finite cost in terms of memory footprint. So you can't create an infinite number of them.
 
 ## Examples
 
@@ -1068,6 +1075,8 @@ to hold the lock during this call.
 ### Select Examples
 - [select/example1](select/example1/main.go)
 - [select/example2](select/example2/main.go)
+- [select/example3](select/example2/main.go)
+
 
 ### Special Example
 - [boids simulation](boids/main.go)

@@ -17,12 +17,14 @@ import "fmt"
 
 func main() {
 
+	// returns a receive only channel.
 	owner := func() <-chan int {
-		// owner creates the channel
+		// owner creates the channel.
 		ch := make(chan int)
 
+		// defer close so that the channel gets closed at the end of the goroutine.
 		go func() {
-			defer close(ch) // owner closes channel when done
+			defer close(ch) // owner closes channel when done.
 			for i := 0; i < 5; i++ {
 				ch <- i
 			}
@@ -31,7 +33,7 @@ func main() {
 	}
 
 	consumer := func(ch <-chan int) {
-		// read values from channel
+		// read values from channel.
 		for v := range ch {
 			fmt.Printf("received: %d\n", v)
 		}
